@@ -1,0 +1,278 @@
+local UserInputService = game:GetService("UserInputService")
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+
+local tokenCollectorEnabled = false
+local killAuraEnabled = false
+local guiVisible = false
+
+local lastInteractTime = 0
+local INTERACT_COOLDOWN = 1
+
+local KILL_AURA_RANGE = 30
+local FIRE_AMOUNT = 100
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "SimpleScriptHub"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = game:GetService("CoreGui")
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Name = "MainFrame"
+MainFrame.Size = UDim2.new(0, 250, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -125, 0.5, -90)
+MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+MainFrame.Visible = false
+MainFrame.Parent = ScreenGui
+
+local TitleBar = Instance.new("Frame")
+TitleBar.Name = "TitleBar"
+TitleBar.Size = UDim2.new(1, 0, 0, 30)
+TitleBar.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+TitleBar.BorderSizePixel = 0
+TitleBar.Parent = MainFrame
+
+local TitleText = Instance.new("TextLabel")
+TitleText.Name = "TitleText"
+TitleText.Size = UDim2.new(1, -30, 1, 0)
+TitleText.Position = UDim2.new(0, 10, 0, 0)
+TitleText.BackgroundTransparency = 1
+TitleText.Text = "Simple Script Hub"
+TitleText.TextColor3 = Color3.fromRGB(255, 255, 255)
+TitleText.TextSize = 16
+TitleText.Font = Enum.Font.SourceSansBold
+TitleText.TextXAlignment = Enum.TextXAlignment.Left
+TitleText.Parent = TitleBar
+
+local CloseButton = Instance.new("TextButton")
+CloseButton.Name = "CloseButton"
+CloseButton.Size = UDim2.new(0, 20, 0, 20)
+CloseButton.Position = UDim2.new(1, -25, 0, 5)
+CloseButton.BackgroundColor3 = Color3.fromRGB(200, 60, 60)
+CloseButton.Text = "X"
+CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+CloseButton.Font = Enum.Font.SourceSansBold
+CloseButton.TextSize = 14
+CloseButton.BorderSizePixel = 0
+CloseButton.Parent = TitleBar
+
+local ContentFrame = Instance.new("Frame")
+ContentFrame.Name = "ContentFrame"
+ContentFrame.Size = UDim2.new(1, -20, 1, -40)
+ContentFrame.Position = UDim2.new(0, 10, 0, 35)
+ContentFrame.BackgroundTransparency = 1
+ContentFrame.Parent = MainFrame
+
+local TokenButton = Instance.new("TextButton")
+TokenButton.Name = "TokenButton"
+TokenButton.Size = UDim2.new(1, 0, 0, 40)
+TokenButton.Position = UDim2.new(0, 0, 0, 0)
+TokenButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+TokenButton.Text = "Token Collector: OFF"
+TokenButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+TokenButton.Font = Enum.Font.SourceSans
+TokenButton.TextSize = 16
+TokenButton.BorderSizePixel = 0
+TokenButton.Parent = ContentFrame
+
+local KillAuraButton = Instance.new("TextButton")
+KillAuraButton.Name = "KillAuraButton"
+KillAuraButton.Size = UDim2.new(1, 0, 0, 40)
+KillAuraButton.Position = UDim2.new(0, 0, 0, 50)
+KillAuraButton.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+KillAuraButton.Text = "Kill Aura: OFF"
+KillAuraButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+KillAuraButton.Font = Enum.Font.SourceSans
+KillAuraButton.TextSize = 16
+KillAuraButton.BorderSizePixel = 0
+KillAuraButton.Parent = ContentFrame
+
+local CreditsLabel = Instance.new("TextLabel")
+CreditsLabel.Name = "CreditsLabel"
+CreditsLabel.Size = UDim2.new(1, 0, 0, 20)
+CreditsLabel.Position = UDim2.new(0, 0, 1, -20)
+CreditsLabel.BackgroundTransparency = 1
+CreditsLabel.Text = "Press Right Shift to toggle GUI"
+CreditsLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+CreditsLabel.Font = Enum.Font.SourceSans
+CreditsLabel.TextSize = 14
+CreditsLabel.Parent = ContentFrame
+
+local function collectTokens()
+    if not tokenCollectorEnabled then return end
+    
+    local currentTime = tick()
+    if currentTime - lastInteractTime < INTERACT_COOLDOWN then
+        return
+    end
+    
+    local originalCFrame = humanoidRootPart.CFrame
+    local originalVelocity = humanoidRootPart.Velocity
+    local originalRotVelocity = humanoidRootPart.RotVelocity
+    
+    local springTokensFolder = workspace:FindFirstChild("Interactions")
+    if springTokensFolder then
+        springTokensFolder = springTokensFolder:FindFirstChild("SpringTokens")
+    end
+    
+    if springTokensFolder and #springTokensFolder:GetChildren() > 0 then
+        for _, token in pairs(springTokensFolder:GetChildren()) do
+            local partPositions = {}
+            for _, part in pairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and part ~= humanoidRootPart then
+                    partPositions[part] = part.CFrame
+                end
+            end
+            
+            humanoidRootPart.CFrame = token.CFrame
+            
+            game:GetService("VirtualInputManager"):SendKeyEvent(true, Enum.KeyCode.E, false, game)
+            
+            task.wait(1)
+            
+            game:GetService("VirtualInputManager"):SendKeyEvent(false, Enum.KeyCode.E, false, game)
+            
+            humanoidRootPart.CFrame = originalCFrame
+            humanoidRootPart.Velocity = originalVelocity
+            humanoidRootPart.RotVelocity = originalRotVelocity
+            
+            for part, pos in pairs(partPositions) do
+                part.CFrame = pos
+            end
+            
+            lastInteractTime = tick()
+            
+            break
+        end
+    end
+end
+
+local function getTargetsInRange()
+    local targets = {}
+    local charactersFolder = workspace:FindFirstChild("Characters")
+    
+    if not charactersFolder then
+        return targets
+    end
+    
+    for _, playerCharacter in pairs(charactersFolder:GetChildren()) do
+        if playerCharacter.Name ~= player.Name then
+            local targetRoot = playerCharacter:FindFirstChild("HumanoidRootPart")
+            if targetRoot and (targetRoot.Position - humanoidRootPart.Position).Magnitude <= KILL_AURA_RANGE then
+                table.insert(targets, playerCharacter)
+            end
+        end
+    end
+    
+    return targets
+end
+
+local function attackTargets()
+    if not killAuraEnabled then return end
+    
+    local targets = getTargetsInRange()
+    
+    local damageRemote = ReplicatedStorage:FindFirstChild("Remotes") 
+    if damageRemote then
+        damageRemote = damageRemote:FindFirstChild("CharactersDamageRemote")
+    end
+    
+    if damageRemote then
+        for _, target in pairs(targets) do
+            for i = 1, FIRE_AMOUNT do
+                spawn(function()
+                    local args = {
+                        [1] = {
+                            [1] = target
+                        }
+                    }
+                    damageRemote:FireServer(unpack(args))
+                end)
+            end
+            
+            pcall(function()
+                if target:FindFirstChild("Humanoid") then
+                    spawn(function()
+                        local args = {
+                            [1] = {
+                                [1] = target
+                            }
+                        }
+                        damageRemote:FireServer(unpack(args))
+                    end)
+                end
+            end)
+            
+            task.spawn(function()
+                for i = 1, 5 do
+                    local args = {
+                        [1] = {
+                            [1] = target
+                        }
+                    }
+                    damageRemote:FireServer(unpack(args))
+                end
+            end)
+        end
+    end
+end
+
+local function toggleGui()
+    guiVisible = not guiVisible
+    MainFrame.Visible = guiVisible
+    
+    local transparency = guiVisible and 0 or 1
+    local tweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local tween = TweenService:Create(MainFrame, tweenInfo, {BackgroundTransparency = transparency})
+    tween:Play()
+end
+
+TokenButton.MouseButton1Click:Connect(function()
+    tokenCollectorEnabled = not tokenCollectorEnabled
+    TokenButton.Text = "Token Collector: " .. (tokenCollectorEnabled and "ON" or "OFF")
+    TokenButton.BackgroundColor3 = tokenCollectorEnabled and Color3.fromRGB(60, 120, 60) or Color3.fromRGB(60, 60, 60)
+end)
+
+KillAuraButton.MouseButton1Click:Connect(function()
+    killAuraEnabled = not killAuraEnabled
+    KillAuraButton.Text = "Kill Aura: " .. (killAuraEnabled and "ON" or "OFF")
+    KillAuraButton.BackgroundColor3 = killAuraEnabled and Color3.fromRGB(120, 60, 60) or Color3.fromRGB(60, 60, 60)
+end)
+
+CloseButton.MouseButton1Click:Connect(function()
+    toggleGui()
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessedEvent)
+    if not gameProcessedEvent then
+        if input.KeyCode == Enum.KeyCode.RightShift then
+            toggleGui()
+        end
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if tokenCollectorEnabled then
+        collectTokens()
+    end
+    
+    if killAuraEnabled then
+        attackTargets()
+    end
+end)
+
+player.CharacterAdded:Connect(function(newCharacter)
+    character = newCharacter
+    humanoidRootPart = character:WaitForChild("HumanoidRootPart")
+end)
+
+toggleGui()
